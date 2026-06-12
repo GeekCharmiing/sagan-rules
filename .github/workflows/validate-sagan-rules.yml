@@ -1,0 +1,36 @@
+name: Validate Sagan Legacy Rules
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - '**.rules'
+      - '**.rule'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - '**.rules'
+      - '**.rule'
+
+jobs:
+  validate:
+    name: Sagan Rule Syntax Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Find rule files
+        id: find-rules
+        run: |
+          FILES=$(find . -type f \( -name "*.rules" -o -name "*.rule" \) | sort)
+          echo "Found rule files:"
+          echo "$FILES"
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          echo "$FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Run Sagan rule validator
+        run: |
+          python3 .github/scripts/validate_sagan_rules.py ${{ steps.find-rules.outputs.files }}
