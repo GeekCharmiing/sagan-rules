@@ -686,4 +686,4 @@ alert any any any -> any any (msg:"[WINDOWS-SECURITY] Use Of LOLBIN Detected - w
 
 alert any any any -> any any (msg:"[WINDOWS-SECURITY] Firewall Allow Rule Created For Illegitimate SVCHOST.EXE Binary"; program:*Sysmon*|*Security*; event_id:4688,1; content:"netsh"; nocase; pcre:"/firewall add allowed program (?!.*\\Windows\\System32\\|.*\\Windows\\SysWOW64\\).*svch[o0]st\.exe/i"; content:"ENABLE"; nocase; classtype:evasion; sid:5017398; rev:1;)
 #################################
-#alert syslog $HOME_NET any -> $EXTERNAL_NET any (msg:"Test Bad Rule"; content:"evil"; fakeopt:value; nocase; sid:9999; classtype:policy-violation;)
+alert syslog $HOME_NET any -> $EXTERNAL_NET any (msg:"Test Bad Rule"; content:"evil"; fakeopt:value; nocase; sid:9999; classtype:policy-violation;)
