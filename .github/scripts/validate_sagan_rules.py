@@ -388,8 +388,8 @@ def validate_rule(rule: str, lineno: int, filename: str) -> list[str]:
             if not rest or rest.strip() not in ("icmp", "tcp", "udp", "1", "6", "17"):
                 err(f"'default_proto' must be icmp/tcp/udp or 1/6/17; got '{rest}'")
 
-        # default_src_port / default_dst_port
-        elif kw in ("default_src_port", "default_dst_port"):
+        # default_src_port
+        elif kw == "default_src_port":
             if not rest or not rest.strip().isdigit():
                 err(f"'{kw}' requires a numeric port value")
 
