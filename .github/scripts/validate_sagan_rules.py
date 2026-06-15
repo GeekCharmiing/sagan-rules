@@ -420,31 +420,35 @@ def validate_rule(rule: str, lineno: int, filename: str) -> tuple[list[str], lis
             if not rest:
                 err("'alert_time' appears to be incomplete")
             else:
-                if "hours" in rest:
-                    m = re.search(r'hours\s+(\d{4})-(\d{4})', rest)
-                    if not m:
-                        err("'alert_time' hours format must be HHMM-HHMM")
-                    else:
-                        start_h = int(m.group(1)[:2])
-                        start_m = int(m.group(1)[2:])
-                        end_h   = int(m.group(2)[:2])
-                        end_m   = int(m.group(2)[2:])
-                        if start_h > 23:
-                            err("'alert_time' starting hour cannot exceed 23")
-                        if start_m > 59:
-                            err("'alert_time' starting minute cannot exceed 59")
-                        if end_h > 23:
-                            err("'alert_time' ending hour cannot exceed 23")
-                        if end_m > 59:
-                            err("'alert_time' ending minute cannot exceed 59")
-                if "days" in rest:
-                    m = re.search(r'days\s+([0-6]+)', rest)
-                    if not m:
-                        err("'alert_time' days must be digits 0-6")
-                    else:
-                        for ch in m.group(1):
-                            if ch not in "0123456":
-                                err(f"'alert_time' day '{ch}' is invalid (0=Sun … 6=Sat)")
+                # Skip format checks if Sagan variables are in use
+                if "$" in rest:
+                    pass
+                else:
+                    if "hours" in rest:
+                        m = re.search(r'hours\s+(\d{4})-(\d{4})', rest)
+                        if not m:
+                            err("'alert_time' hours format must be HHMM-HHMM")
+                        else:
+                            start_h = int(m.group(1)[:2])
+                            start_m = int(m.group(1)[2:])
+                            end_h   = int(m.group(2)[:2])
+                            end_m   = int(m.group(2)[2:])
+                            if start_h > 23:
+                                err("'alert_time' starting hour cannot exceed 23")
+                            if start_m > 59:
+                                err("'alert_time' starting minute cannot exceed 59")
+                            if end_h > 23:
+                                err("'alert_time' ending hour cannot exceed 23")
+                            if end_m > 59:
+                                err("'alert_time' ending minute cannot exceed 59")
+                    if "days" in rest:
+                        m = re.search(r'days\s+([0-6]+)', rest)
+                        if not m:
+                            err("'alert_time' days must be digits 0-6")
+                        else:
+                            for ch in m.group(1):
+                                if ch not in "0123456":
+                                    err(f"'alert_time' day '{ch}' is invalid (0=Sun … 6=Sat)")
 
     return errors, warnings
 
