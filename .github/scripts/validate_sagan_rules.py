@@ -350,21 +350,26 @@ def validate_rule(rule: str, lineno: int, filename: str) -> tuple[list[str], lis
             if not rest:
                 err("'threshold' appears to be incomplete")
             else:
-                has_type    = "type" in rest
-                has_track   = "track" in rest
-                has_count   = "count" in rest
-                has_seconds = "seconds" in rest
+                # Catch colon-contaminated keywords e.g. "seconds: 3600" instead of "seconds 3600"
+                for bad_kw in ("type", "track", "count", "seconds"):
+                    if re.search(rf'\b{bad_kw}\s*:', rest):
+                        err(f"'threshold' option '{bad_kw}' must not be followed by a colon — use '{bad_kw} <value>' not '{bad_kw}: <value>'")
+
+                has_type    = bool(re.search(r'\btype\b', rest))
+                has_track   = bool(re.search(r'\btrack\b', rest))
+                has_count   = bool(re.search(r'\bcount\b', rest))
+                has_seconds = bool(re.search(r'\bseconds\b', rest))
                 if not (has_type and has_track and has_count and has_seconds):
                     err("'threshold' is incomplete — must specify type, track, count and seconds")
                 if has_type:
-                    if "limit" not in rest and "suppress" not in rest:
+                    if not re.search(r'\btype\s+(?:limit|suppress)\b', rest):
                         err("'threshold' type must be 'limit' or 'suppress'")
                 if has_count:
-                    m = re.search(r'count\s+(\d+)', rest)
+                    m = re.search(r'\bcount\s+(\d+)', rest)
                     if m and int(m.group(1)) == 0:
                         err("'threshold' count cannot be 0")
                 if has_seconds:
-                    m = re.search(r'seconds\s+(\d+)', rest)
+                    m = re.search(r'\bseconds\s+(\d+)', rest)
                     if m and int(m.group(1)) == 0:
                         err("'threshold' seconds cannot be 0")
 
@@ -373,17 +378,22 @@ def validate_rule(rule: str, lineno: int, filename: str) -> tuple[list[str], lis
             if not rest:
                 err("'after' appears to be incomplete")
             else:
-                has_track   = "track" in rest
-                has_count   = "count" in rest
-                has_seconds = "seconds" in rest
+                # Catch colon-contaminated keywords e.g. "seconds: 3600" instead of "seconds 3600"
+                for bad_kw in ("track", "count", "seconds"):
+                    if re.search(rf'\b{bad_kw}\s*:', rest):
+                        err(f"'after' option '{bad_kw}' must not be followed by a colon — use '{bad_kw} <value>' not '{bad_kw}: <value>'")
+
+                has_track   = bool(re.search(r'\btrack\b', rest))
+                has_count   = bool(re.search(r'\bcount\b', rest))
+                has_seconds = bool(re.search(r'\bseconds\b', rest))
                 if not (has_track and has_count and has_seconds):
                     err("'after' is incomplete — must specify track, count and seconds")
                 if has_count:
-                    m = re.search(r'count\s+(\d+)', rest)
+                    m = re.search(r'\bcount\s+(\d+)', rest)
                     if m and int(m.group(1)) == 0:
                         err("'after' count cannot be 0")
                 if has_seconds:
-                    m = re.search(r'seconds\s+(\d+)', rest)
+                    m = re.search(r'\bseconds\s+(\d+)', rest)
                     if m and int(m.group(1)) == 0:
                         err("'after' seconds cannot be 0")
 
@@ -478,6 +488,35 @@ def validate_file(filepath: str) -> tuple[list[str], list[str]]:
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
+WARNINGS_DIR  = ".github/validation"
+
+
+def write_log(entries: list[str], argv: list[str], kind: str) -> str:
+    """
+    Write a validation log (errors or warnings) to a timestamped file.
+    kind should be 'errors' or 'warnings'.
+    Returns the file path written.
+    """
+    import datetime
+    os.makedirs(WARNINGS_DIR, exist_ok=True)
+    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S")
+    log_file  = os.path.join(WARNINGS_DIR, f"{kind}_{timestamp}.txt")
+    label     = "Advisory" if kind == "warnings" else "Error"
+    icon      = "⚠" if kind == "warnings" else "✗"
+    with open(log_file, "w", encoding="utf-8") as f:
+        f.write(f"Sagan Rule Validation — {label} Log\n")
+        f.write(f"Generated: {datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
+        f.write(f"Files scanned: {len(argv)}\n")
+        f.write("=" * 60 + "\n\n")
+        if entries:
+            for entry in entries:
+                f.write(f"  {icon}  {entry}\n")
+        else:
+            f.write(f"  No {kind} found.\n")
+        f.write(f"\nTotal: {len(entries)} {kind}\n")
+    return log_file
+
+
 def main(argv: list[str]) -> int:
     if not argv:
         print("Usage: validate_sagan_rules.py <file.rules> [...]", file=sys.stderr)
@@ -494,20 +533,49 @@ def main(argv: list[str]) -> int:
         all_errors.extend(file_errors)
         all_warnings.extend(file_warnings)
 
+    warnings_file = write_log(all_warnings, argv, "warnings")
+    errors_file   = write_log(all_errors,   argv, "errors")
+
+    # Build links to the Actions run where artifacts will be uploaded
+    server_url = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+    repo       = os.environ.get("GITHUB_REPOSITORY", "")
+    run_id     = os.environ.get("GITHUB_RUN_ID", "")
+
+    if repo and run_id:
+        artifact_url  = f"{server_url}/{repo}/actions/runs/{run_id}#artifacts"
+        warnings_path = artifact_url
+        errors_path   = artifact_url
+    else:
+        warnings_path = os.path.abspath(warnings_file)
+        errors_path   = os.path.abspath(errors_file)
+
     if all_warnings:
-        print("\n[WARN] Sagan rule validation found advisories:\n")
+        print("\n" + "=" * 60)
+        print(f"  ⚠  ADVISORIES ({len(all_warnings)} warning(s))")
+        print("=" * 60)
         for w in all_warnings:
             print(f"  ⚠  {w}")
-        print()
+        print(f"\n  📄 Full advisory log: {warnings_path}")
 
     if all_errors:
-        print("\n[FAIL] Sagan rule validation found errors:\n")
+        print("\n" + "=" * 60)
+        print(f"  ✗  ERRORS ({len(all_errors)} error(s))  —  ACTION REQUIRED")
+        print("=" * 60)
         for e in all_errors:
             print(f"  ✗  {e}")
-        print(f"\n{len(all_errors)} error(s), {len(all_warnings)} warning(s) found across {len(argv)} file(s).")
+        print("\n" + "=" * 60)
+        print(f"  RESULT: FAILED — {len(all_errors)} error(s), {len(all_warnings)} warning(s) across {len(argv)} file(s).")
+        print(f"  📄 Errors log:    {errors_path}")
+        if all_warnings:
+            print(f"  📄 Warnings log:  {warnings_path}")
+        print("=" * 60)
         return 1
 
-    print(f"[PASS] All rules validated successfully ({len(argv)} file(s), {len(all_warnings)} warning(s)).")
+    print("\n" + "=" * 60)
+    print(f"  ✔  PASSED — all rules valid ({len(argv)} file(s), {len(all_warnings)} warning(s)).")
+    if all_warnings:
+        print(f"  📄 Warnings log:  {warnings_path}")
+    print("=" * 60)
     return 0
 
 
