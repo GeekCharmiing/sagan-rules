@@ -173,7 +173,7 @@ def validate_rule(rule: str, lineno: int, filename: str) -> tuple[list[str], lis
         # sid
         if kw == "sid":
             if not rest or not rest.strip().isdigit():
-                err("'sid' value is missing or non-numeric")
+                warn("'sid' value is missing or non-numeric")
 
         # rev
         elif kw == "rev":
@@ -182,10 +182,9 @@ def validate_rule(rule: str, lineno: int, filename: str) -> tuple[list[str], lis
 
         # msg
         elif kw == "msg":
-            # rest may be "msg"; value is after the colon in the original split
             val = between_quotes(rest) if rest else None
             if val is None or val == "":
-                err("'msg' value is empty or not quoted")
+                err("'msg' value is empty — Sagan requires a non-empty quoted message string")
 
         # content
         elif kw == "content":
