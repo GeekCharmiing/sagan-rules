@@ -191,11 +191,11 @@ def validate_rule(rule: str, lineno: int, filename: str) -> tuple[list[str], lis
         elif kw == "content":
             content_count += 1
             if not rest:
-                err("'content' appears to be incomplete (no value)")
+                warn("'content' appears to be incomplete (no value)")
             else:
                 val = between_quotes(rest)
                 if val is None or val == "":
-                    err("'content' value is empty or not quoted")
+                    warn("'content' value is empty or not quoted")
 
         # nocase / offset / depth / distance / within
         elif kw in ("nocase", "offset", "depth", "distance", "within"):
@@ -214,7 +214,6 @@ def validate_rule(rule: str, lineno: int, filename: str) -> tuple[list[str], lis
         elif kw in ("meta_nocase", "meta_offset", "meta_depth", "meta_distance", "meta_within"):
             if meta_content_count < 1:
                 err(f"'{kw}' has no preceding 'meta_content' to apply to")
-
         # pcre
         elif kw == "pcre":
             if not rest:
@@ -225,7 +224,7 @@ def validate_rule(rule: str, lineno: int, filename: str) -> tuple[list[str], lis
                     err("'pcre' value is empty or not quoted")
                 else:
                     if not pcre_has_closing_slash(val):
-                        warn(f"'pcre' is missing the closing '/' in: {val}")
+                        err(f"'pcre' is missing the closing '/' in: {val}")
                     else:
                         # Extract the actual pattern between slashes
                         m = re.match(r'^/(.*)/[imsxAEG]*$', val)
@@ -252,7 +251,7 @@ def validate_rule(rule: str, lineno: int, filename: str) -> tuple[list[str], lis
         # json_nocase / json_contains
         elif kw in ("json_nocase", "json_contains"):
             if json_content_count < 1:
-                err(f"'{kw}' has no preceding 'json_content' to apply to")
+                warn(f"'{kw}' has no preceding 'json_content' to apply to")
 
         # json_pcre
         elif kw == "json_pcre":
@@ -303,7 +302,7 @@ def validate_rule(rule: str, lineno: int, filename: str) -> tuple[list[str], lis
         # parse_src_ip / parse_dst_ip
         elif kw in ("parse_src_ip", "parse_dst_ip"):
             if not rest or not rest.strip().isdigit():
-                err(f"'{kw}' requires a numeric position argument")
+                warn(f"'{kw}' requires a numeric position argument")
 
         # xbits
         elif kw == "xbits":
@@ -405,7 +404,7 @@ def validate_rule(rule: str, lineno: int, filename: str) -> tuple[list[str], lis
         # default_src_port
         elif kw == "default_src_port":
             if not rest or not rest.strip().isdigit():
-                err(f"'{kw}' requires a numeric port value")
+                warn(f"'{kw}' requires a numeric port value")
 
         # flexbits_upause / xbits_upause / flexbits_pause / xbits_pause
         elif kw in ("flexbits_upause", "xbits_upause", "flexbits_pause", "xbits_pause"):
@@ -425,28 +424,28 @@ def validate_rule(rule: str, lineno: int, filename: str) -> tuple[list[str], lis
                 if "hours" in rest:
                     m = re.search(r'hours\s+(\d{4})-(\d{4})', rest)
                     if not m:
-                        warn("'alert_time' hours format should be HHMM-HHMM")
+                        err("'alert_time' hours format must be HHMM-HHMM")
                     else:
                         start_h = int(m.group(1)[:2])
                         start_m = int(m.group(1)[2:])
                         end_h   = int(m.group(2)[:2])
                         end_m   = int(m.group(2)[2:])
                         if start_h > 23:
-                            warn("'alert_time' starting hour cannot exceed 23")
+                            err("'alert_time' starting hour cannot exceed 23")
                         if start_m > 59:
-                            warn("'alert_time' starting minute cannot exceed 59")
+                            err("'alert_time' starting minute cannot exceed 59")
                         if end_h > 23:
-                            warn("'alert_time' ending hour cannot exceed 23")
+                            err("'alert_time' ending hour cannot exceed 23")
                         if end_m > 59:
-                            warn("'alert_time' ending minute cannot exceed 59")
+                            err("'alert_time' ending minute cannot exceed 59")
                 if "days" in rest:
                     m = re.search(r'days\s+([0-6]+)', rest)
                     if not m:
-                        warn("'alert_time' days should be digits 0-6")
+                        err("'alert_time' days must be digits 0-6")
                     else:
                         for ch in m.group(1):
                             if ch not in "0123456":
-                                warn(f"'alert_time' day '{ch}' is invalid (0=Sun … 6=Sat)")
+                                err(f"'alert_time' day '{ch}' is invalid (0=Sun … 6=Sat)")
 
     return errors, warnings
 
