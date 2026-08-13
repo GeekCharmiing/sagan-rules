@@ -717,3 +717,11 @@ alert any $EXTERNAL_NET any -> $HOME_NET any (msg:"[EXPERIMENTAL][WINDOWS-SECURI
 alert any $EXTERNAL_NET any -> $HOME_NET any (msg:"[EXPERIMENTAL][WINDOWS-SECURITY] Kerberos - RC4 Kerberoasting followed by AD CS Template Load"; program:Security; event_id:4898; content:"Certificate Templates"; xbits:isset,kerb.rc4.request,track ip_src; classtype:credential-access; parse_src_ip:1; threshold:type suppress,track by_src,count 1,seconds 3600; reference:url,attack.mitre.org/techniques/T1649/; metadata:createdOn 2026_06_11, updatedOn 2026_06_16; sid:9870014; rev:2;)
 
 alert any any -> $HOME_NET any (msg:"[EXPERIMENTAL][WINDOWS-SECURITY] Kerberos - RC4 Encryption Still Supported by Domain Controller"; program:Security; event_id:4768; content:"Service Name|3a| krbtgt"; content:"RC4"; distance:0; within:200; classtype:policy-violation; priority:3; parse_src_ip:1; threshold:type suppress,track by_src,count 1,seconds 86400; reference:url,attack.mitre.org/techniques/T1558/004/; metadata:createdOn 2026_06_30, updatedOn 2026_06_30; sid:9870027; rev:1;)
+
+#======For testing
+alert any any (msg:"[TEST] meta_content comma before sagan - SHOULD ERROR"; meta_content:",MD5=%sagan%",sid,SRC_IP; reference:url,internal-test; metadata: createdOn 2026_08_13, updatedOn 2026_08_13; classtype:test; sid:9000001; rev:1;)
+
+alert any any (msg:"[TEST] meta_content comma after sagan - SHOULD PASS"; meta_content:"%sagan%,",sid,SRC_IP; reference:url,internal-test; metadata: createdOn 2026_08_13, updatedOn 2026_08_13; classtype:test; sid:9000002; rev:1;)
+
+alert syslog any (msg:"[TEST] meta_content hex-encoded comma before sagan - SHOULD PASS"; meta_content:"|2c|MD5=%sagan%",sid,SRC_IP; reference:url,internal-test; metadata: createdOn 2026_08_13, updatedOn 2026_08_13; classtype:test; sid:9000003; rev:1;)
+#=========
